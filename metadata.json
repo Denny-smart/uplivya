@@ -1,0 +1,5 @@
+{
+  "name": "Reddit Post Manager",
+  "description": "A modern, responsive web application to authenticate Reddit accounts, create and schedule posts, and manage multiple accounts from a single platform.",
+  "requestFramePermissions": []
+}
