@@ -8,6 +8,7 @@ import { DashboardLayout } from './components/Layout';
 // Lazy load pages for better initial load performance
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 const AuthPage = React.lazy(() => import('./pages/AuthPage'));
+const EmailVerificationPage = React.lazy(() => import('./pages/EmailVerificationPage'));
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
 const RedditAccountsView = React.lazy(() => import('./pages/dashboard/RedditAccountsView'));
 const PostsView = React.lazy(() => import('./pages/dashboard/PostsView'));
@@ -39,6 +40,7 @@ const AppRoutes: React.FC = () => {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/verify-email" element={<EmailVerificationPage />} />
       
       <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />}>
