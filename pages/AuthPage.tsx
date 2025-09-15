@@ -19,10 +19,10 @@ const AuthFormContainer: React.FC<{ children: React.ReactNode; title: string; }>
     </Card>
 );
 
-const LoginForm: React.FC<{ onSwitch: () => void }> = ({ onSwitch }) => {
+const LoginForm: React.FC<{ onSwitch: () => void, successMessage?: string | null }> = ({ onSwitch, successMessage }) => {
     const navigate = useNavigate();
     const { login } = useAppContext();
-    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [formData, setFormData] = useState({ username: '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +35,10 @@ const LoginForm: React.FC<{ onSwitch: () => void }> = ({ onSwitch }) => {
         setIsLoading(true);
         setError(null);
         try {
-            const tokens = await apiService.login(formData);
+            const tokens = await apiService.login({
+                username_or_email: formData.username,
+                password: formData.password
+            });
             await login(tokens);
             navigate('/dashboard');
         } catch (err) {
@@ -49,7 +52,8 @@ const LoginForm: React.FC<{ onSwitch: () => void }> = ({ onSwitch }) => {
     return (
         <AuthFormContainer title="Welcome Back!">
             <form onSubmit={handleSubmit} className="space-y-4">
-                <Input label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required autoComplete="email" />
+                {successMessage && <p className="text-green-500 text-sm text-center bg-green-50 dark:bg-green-900/50 p-2 rounded-md">{successMessage}</p>}
+                <Input label="Username or Email" name="username" value={formData.username} onChange={handleChange} required autoComplete="username" />
                 <Input label="Password" name="password" type="password" value={formData.password} onChange={handleChange} required autoComplete="current-password" />
                 {error && <p className="text-red-500 text-sm">{error}</p>}
                 <Button type="submit" isLoading={isLoading} className="w-full">Log In</Button>
@@ -74,10 +78,15 @@ const LoginForm: React.FC<{ onSwitch: () => void }> = ({ onSwitch }) => {
     );
 };
 
-const SignupForm: React.FC<{ onSwitch: () => void }> = ({ onSwitch }) => {
-    const navigate = useNavigate();
-    const { login } = useAppContext();
-    const [formData, setFormData] = useState({ username: '', email: '', password: '' });
+const SignupForm: React.FC<{ onSwitch: (successMsg: string) => void }> = ({ onSwitch }) => {
+    const [formData, setFormData] = useState({ 
+        username: '', 
+        email: '', 
+        password: '', 
+        confirmPassword: '', 
+        firstName: '', 
+        lastName: '' 
+    });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -87,19 +96,26 @@ const SignupForm: React.FC<{ onSwitch: () => void }> = ({ onSwitch }) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match.");
+            return;
+        }
         setIsLoading(true);
         setError(null);
         try {
-            await apiService.signup(formData);
-            // After signup, log the user in
-            const tokens = await apiService.login({ email: formData.email, password: formData.password });
-            await login(tokens);
-            navigate('/dashboard');
+            await apiService.signup({
+                username: formData.username,
+                email: formData.email,
+                password: formData.password,
+                confirmPassword: formData.confirmPassword,
+                firstName: formData.firstName,
+                lastName: formData.lastName
+            });
+            onSwitch('Signup successful! Please log in.');
         } catch (err) {
             const apiError = err as ApiError;
-            // Handle specific error messages from backend if available
             if (apiError.details) {
-                const errorMessages = Object.entries(apiError.details).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join(' ');
+                const errorMessages = Object.entries(apiError.details).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${Array.isArray(value) ? value.join(', ') : value}`).join(' ');
                 setError(errorMessages || 'Signup failed. Please try again.');
             } else {
                 setError(apiError.message || 'Signup failed. Please try again.');
@@ -112,15 +128,21 @@ const SignupForm: React.FC<{ onSwitch: () => void }> = ({ onSwitch }) => {
     return (
         <AuthFormContainer title="Create an Account">
             <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <Input label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} autoComplete="given-name" />
+                    <Input label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} autoComplete="family-name" />
+                </div>
                 <Input label="Username" name="username" value={formData.username} onChange={handleChange} required autoComplete="username" />
                 <Input label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required autoComplete="email" />
                 <Input label="Password" name="password" type="password" value={formData.password} onChange={handleChange} required autoComplete="new-password" />
+                <Input label="Confirm Password" name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleChange} required autoComplete="new-password" />
+                
                 {error && <p className="text-red-500 text-sm">{error}</p>}
                 <Button type="submit" isLoading={isLoading} className="w-full">Sign Up</Button>
             </form>
             <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
                 Already have an account?{' '}
-                <button onClick={onSwitch} className="font-medium text-primary-600 hover:underline">Log in</button>
+                <button onClick={() => onSwitch('')} className="font-medium text-primary-600 hover:underline">Log in</button>
             </div>
         </AuthFormContainer>
     );
@@ -130,6 +152,7 @@ const AuthPage: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isLoginView, setIsLoginView] = useState(true);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const { isAuthenticated, isLoading } = useAppContext();
 
     useEffect(() => {
@@ -142,7 +165,13 @@ const AuthPage: React.FC = () => {
         return null;
     }
 
-    const toggleView = () => {
+    const toggleView = (successMsg: string = '') => {
+        if (successMsg) {
+            setSuccessMessage(successMsg);
+        } else {
+            setSuccessMessage(null);
+        }
+
         if (isLoginView) {
             navigate('/auth#signup');
         } else {
@@ -159,8 +188,9 @@ const AuthPage: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
+                    className="w-full"
                 >
-                    {isLoginView ? <LoginForm onSwitch={toggleView} /> : <SignupForm onSwitch={toggleView} />}
+                    {isLoginView ? <LoginForm onSwitch={toggleView} successMessage={successMessage} /> : <SignupForm onSwitch={toggleView} />}
                 </motion.div>
             </AnimatePresence>
         </div>

@@ -62,8 +62,8 @@ const CreatePostView: React.FC = () => {
                     {error && <p className="text-red-500 text-sm">{error}</p>}
                     
                     <div className="flex space-x-4 pt-4">
-                        <Button onClick={(e) => handleSubmit(e, false)} isLoading={isLoading}>Publish Now</Button>
-                        <Button onClick={(e) => handleSubmit(e, true)} variant="secondary" isLoading={isLoading} disabled={!formData.scheduled_at}>Schedule Post</Button>
+                        <Button type="button" onClick={(e) => handleSubmit(e, false)} isLoading={isLoading}>Publish Now</Button>
+                        <Button type="button" onClick={(e) => handleSubmit(e, true)} variant="secondary" isLoading={isLoading} disabled={!formData.scheduled_at}>Schedule Post</Button>
                     </div>
                 </form>
             </Card>
