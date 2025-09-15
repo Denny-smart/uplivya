@@ -26,15 +26,44 @@ const LoginForm: React.FC<{ onSwitch: () => void, successMessage?: string | null
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [emailNotVerified, setEmailNotVerified] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
+    const [resendMessage, setResendMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError(null);
+        setEmailNotVerified(false);
+        setResendMessage(null);
+    };
+
+    const handleResendVerification = async () => {
+        if (!formData.username) {
+            setResendMessage({type: 'error', text: 'Please enter your email address to resend the link.'});
+            return;
+        }
+        setResendLoading(true);
+        setResendMessage(null);
+        setError(null);
+        try {
+            await apiService.resendVerification({ email: formData.username });
+            setResendMessage({type: 'success', text: 'A new verification email has been sent. Please check your inbox.'});
+            setEmailNotVerified(false);
+        } catch (err) {
+            const apiError = err as ApiError;
+            setResendMessage({type: 'error', text: apiError.details?.detail || 'Failed to send email. Please try again.'});
+            setEmailNotVerified(true);
+        } finally {
+            setResendLoading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError(null);
+        setEmailNotVerified(false);
+        setResendMessage(null);
         try {
             const tokens = await apiService.login({
                 username_or_email: formData.username,
@@ -44,7 +73,12 @@ const LoginForm: React.FC<{ onSwitch: () => void, successMessage?: string | null
             navigate('/dashboard');
         } catch (err) {
             const apiError = err as ApiError;
-            setError(apiError.details?.detail || apiError.message || 'Login failed. Please check your credentials.');
+            if (apiError.details?.email_verified === false) {
+                setError(apiError.details?.detail || 'Your email address is not verified.');
+                setEmailNotVerified(true);
+            } else {
+                setError(apiError.details?.detail || apiError.message || 'Login failed. Please check your credentials.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -56,7 +90,30 @@ const LoginForm: React.FC<{ onSwitch: () => void, successMessage?: string | null
                 {successMessage && <p className="text-green-500 text-sm text-center bg-green-50 dark:bg-green-900/50 p-2 rounded-md">{successMessage}</p>}
                 <Input label="Username or Email" name="username" value={formData.username} onChange={handleChange} required autoComplete="username" />
                 <Input label="Password" name="password" type="password" value={formData.password} onChange={handleChange} required autoComplete="current-password" />
+                
                 {error && <p className="text-red-500 text-sm">{error}</p>}
+                
+                {resendMessage && (
+                     <p className={`text-sm ${resendMessage.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+                        {resendMessage.text}
+                    </p>
+                )}
+
+                {emailNotVerified && (
+                    <div className="text-center -mt-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleResendVerification}
+                            isLoading={resendLoading}
+                            className="!shadow-none !text-primary-600 !font-medium hover:!underline"
+                        >
+                            Resend verification email
+                        </Button>
+                    </div>
+                )}
+
                 <Button type="submit" isLoading={isLoading} className="w-full">Log In</Button>
             </form>
             <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
@@ -112,7 +169,7 @@ const SignupForm: React.FC<{ onSwitch: (successMsg: string) => void }> = ({ onSw
                 first_name: formData.firstName,
                 last_name: formData.lastName
             });
-            onSwitch('Signup successful! Please log in.');
+            onSwitch('Signup successful! Please check your email for a verification link, then log in.');
         } catch (err) {
             const apiError = err as ApiError;
             if (apiError.details) {
