@@ -107,9 +107,9 @@ const SignupForm: React.FC<{ onSwitch: (successMsg: string) => void }> = ({ onSw
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,
-                confirmPassword: formData.confirmPassword,
-                firstName: formData.firstName,
-                lastName: formData.lastName
+                password2: formData.confirmPassword,
+                first_name: formData.firstName,
+                last_name: formData.lastName
             });
             onSwitch('Signup successful! Please log in.');
         } catch (err) {
