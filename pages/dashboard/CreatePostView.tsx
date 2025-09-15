@@ -1,4 +1,14 @@
-import React, { useState, useEffect } from 'react';
+// Silencing TypeScript errors for modules imported via CDN
+// FIX: Replaced problematic module declarations and imports with global const declarations,
+// assuming 'marked' and 'dompurify' are loaded from a CDN.
+declare const marked: {
+  parse(markdown: string, options?: any): string;
+};
+declare const DOMPurify: {
+  sanitize(html: string): string;
+};
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { apiService } from '../../services/apiService';
@@ -11,6 +21,7 @@ const CreatePostView: React.FC = () => {
     const [accounts, setAccounts] = useState<RedditAccount[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string|null>(null);
+    const [activeTab, setActiveTab] = useState<'write' | 'preview'>('write');
 
     useEffect(() => {
         apiService.getRedditAccounts().then(setAccounts).catch(() => setError('Could not load Reddit accounts.'));
@@ -37,6 +48,14 @@ const CreatePostView: React.FC = () => {
         }
     };
     
+    const sanitizedHtml = useMemo(() => {
+        if (typeof window !== 'undefined') {
+            const rawHtml = marked.parse(formData.content, { async: false }) as string;
+            return DOMPurify.sanitize(rawHtml);
+        }
+        return '';
+    }, [formData.content]);
+
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
             <Card className="max-w-2xl mx-auto">
@@ -55,7 +74,26 @@ const CreatePostView: React.FC = () => {
                     <Input label="Post Title" name="title" placeholder="An interesting title" value={formData.title} onChange={handleChange} required />
                     <div>
                         <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Content (Markdown supported)</label>
-                        <textarea id="content" name="content" placeholder="Your post content..." rows={10} value={formData.content} onChange={handleChange} className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" required></textarea>
+                        <div className="border border-gray-300 dark:border-gray-600 rounded-md shadow-sm">
+                            <div className="flex border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-t-md">
+                                <button type="button" onClick={() => setActiveTab('write')} className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'write' ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 bg-white dark:bg-gray-800' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent'}`}>
+                                    Write
+                                </button>
+                                <button type="button" onClick={() => setActiveTab('preview')} className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'preview' ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 bg-white dark:bg-gray-800' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent'}`}>
+                                    Preview
+                                </button>
+                            </div>
+                            <div className="bg-white dark:bg-gray-800 rounded-b-md">
+                                {activeTab === 'write' ? (
+                                    <textarea id="content" name="content" placeholder="Your post content..." rows={10} value={formData.content} onChange={handleChange} className="block w-full px-3 py-2 bg-transparent border-0 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-0 sm:text-sm" required></textarea>
+                                ) : (
+                                    <div 
+                                        className="markdown-preview p-4 min-h-[268px] prose-sm"
+                                        dangerouslySetInnerHTML={{ __html: sanitizedHtml }} 
+                                    />
+                                )}
+                            </div>
+                        </div>
                     </div>
                     <Input label="Schedule Time (optional)" name="scheduled_at" type="datetime-local" value={formData.scheduled_at} onChange={handleChange} />
                     

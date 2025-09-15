@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContextProvider';
 import { useAppContext } from './hooks/useAppContext';
 import { FullPageSpinner } from './components/UI';
@@ -59,11 +59,11 @@ const AppRoutes: React.FC = () => {
 function App() {
   return (
     <AppProvider>
-      <HashRouter>
+      <BrowserRouter>
         <Suspense fallback={<FullPageSpinner />}>
             <AppRoutes />
         </Suspense>
-      </HashRouter>
+      </BrowserRouter>
     </AppProvider>
   );
 }
