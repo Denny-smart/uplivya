@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -107,7 +108,7 @@ const SignupForm: React.FC<{ onSwitch: (successMsg: string) => void }> = ({ onSw
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,
-                password2: formData.confirmPassword,
+                confirm_password: formData.confirmPassword,
                 first_name: formData.firstName,
                 last_name: formData.lastName
             });
